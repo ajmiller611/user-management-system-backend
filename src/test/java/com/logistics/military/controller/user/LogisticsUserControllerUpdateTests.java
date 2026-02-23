@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -69,9 +70,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(LogisticsUserController.class)
 @Import({SecurityConfig.class, AppConfig.class})
 @ActiveProfiles("test")
+@WithMockUser(roles = "ADMIN")
 class LogisticsUserControllerUpdateTests {
 
-  @InjectMocks private LogisticsUserController logisticsUserController;
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockBean private LogisticsUserService logisticsUserService;
@@ -108,7 +109,6 @@ class LogisticsUserControllerUpdateTests {
    * and logs properly.
    */
   @Test
-  @WithMockUser
   void givenValidUpdateRequestAndUserIdWhenUpdateUserThenReturnsSuccessWithUpdatedUserDetails()
       throws Exception {
 
@@ -142,7 +142,6 @@ class LogisticsUserControllerUpdateTests {
    * This test case verifies that validation annotations are integrated.
    */
   @Test
-  @WithMockUser
   void givenInvalidUsernameWhenUpdateUserThenReturnBadRequest() throws Exception {
     requestDto.setUsername("in");
     String invalidUsernameJson = objectMapper.writeValueAsString(requestDto);
