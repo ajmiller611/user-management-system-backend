@@ -1,15 +1,18 @@
 package com.logistics.military.controller;
 
 import com.logistics.military.dto.AuthTokensDto;
+import com.logistics.military.dto.LoginResponseDto;
+import com.logistics.military.dto.LogisticsUserDto;
 import com.logistics.military.dto.UserRequestDto;
-import com.logistics.military.dto.UserResponseDto;
+import com.logistics.military.model.Role;
 import com.logistics.military.security.TokenService;
 import com.logistics.military.service.AuthenticationService;
+import com.logistics.military.service.LogisticsUserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Instant;
-import java.util.Collections;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +23,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +47,7 @@ public class AuthenticationController {
 
   private final AuthenticationService authenticationService;
   private final TokenService tokenService;
+  private final LogisticsUserService logisticsUserService;
 
   public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
 
@@ -51,19 +56,19 @@ public class AuthenticationController {
    *
    * <p>This method accepts a {@link UserRequestDto} containing the user's credentials
    * (username and password) and calls the {@link AuthenticationService} to authenticate the user.
-   * If successful, a {@link UserResponseDto} is returned with the user details and
-   * a JWT access token in the Authorization Header and refresh token in an HTTP-Only cookie.
+   * If successful, a {@link LoginResponseDto} is returned with the user details,
+   * a JWT access token in the Authorization Header, and refresh token in an HTTP-Only cookie.
    * </p>
    *
    * @param body the login data transfer object containing the user's username and password
-   * @return a {@link UserResponseDto} containing the user details and the generated JWT token
+   * @return a {@link LoginResponseDto} containing the user details and the generated JWT token
    */
   @PostMapping("/login")
-  public ResponseEntity<UserResponseDto> loginUser(
+  public ResponseEntity<LoginResponseDto> loginUser(
       @RequestBody UserRequestDto body,
       HttpServletResponse response) {
 
-    logger.info("Endpoint /auth/login received request: {}", body);
+    logger.info("Login attempt for username={}", body.getUsername());
 
     AuthTokensDto authTokensDto = authenticationService.loginUser(body);
 
@@ -78,14 +83,20 @@ public class AuthenticationController {
       refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
       response.addCookie(refreshTokenCookie);
 
-      UserResponseDto userResponseDto = new UserResponseDto(
+      List<String> roles = authTokensDto.getLogisticsUserDto().getAuthorities()
+          .stream()
+          .map(Role::getAuthority)
+          .toList();
+
+      LoginResponseDto loginResponseDto = new LoginResponseDto(
           authTokensDto.getLogisticsUserDto().getUserId(),
           authTokensDto.getLogisticsUserDto().getUsername(),
-          authTokensDto.getLogisticsUserDto().getEmail()
+          authTokensDto.getLogisticsUserDto().getEmail(),
+          roles
       );
 
-      logger.info("Endpoint /auth/login response: {}", userResponseDto);
-      return ResponseEntity.ok(userResponseDto);
+      logger.info("Endpoint /auth/login response: {}", loginResponseDto);
+      return ResponseEntity.ok(loginResponseDto);
     } else {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
@@ -146,11 +157,13 @@ public class AuthenticationController {
             .body("Refresh token has expired");
       }
 
+      LogisticsUserDto userDto = logisticsUserService.getUserByUsername(username);
+
       // Generate a new access token (JWT) for the user
       Authentication auth = new UsernamePasswordAuthenticationToken(
           username,
           null,
-          Collections.emptyList()
+          userDto.getAuthorities()
       );
       String newAccessToken = tokenService.generateAccessToken(auth);
       String newRefreshToken = tokenService.generateRefreshToken(auth);
@@ -170,5 +183,72 @@ public class AuthenticationController {
     } catch (JwtException e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid token");
     }
+  }
+
+  /**
+   * Retrieves the currently authenticated user's information.
+   *
+   * <p>This endpoint returns basic details about the user associated with the
+   * current authentication context. The user is identified from the
+   * {@link Authentication} object populated by Spring Security after validating
+   * the JWT access token provided in the request.</p>
+   *
+   * @param authentication the {@link Authentication} object representing the
+   *                       currently authenticated user, injected by Spring Security
+   * @return a {@link LoginResponseDto} containing the authenticated user's
+   *         details and roles
+   */
+  @GetMapping("/me")
+  public ResponseEntity<LoginResponseDto> getCurrentUser(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    String username = authentication.getName();
+
+    LogisticsUserDto userDto = logisticsUserService.getUserByUsername(username);
+
+    List<String> roles = userDto.getAuthorities()
+        .stream()
+        .map(Role::getAuthority)
+        .toList();
+
+    LoginResponseDto response = new LoginResponseDto(
+        userDto.getUserId(),
+        userDto.getUsername(),
+        userDto.getEmail(),
+        roles
+    );
+
+    return  ResponseEntity.ok(response);
+  }
+
+  /**
+   * Logs out the currently authenticated user.
+   *
+   * <p>This clears the refresh token cookie so it cannot be used for future refresh requests.
+   * Access token is held in the frontend memory and should be cleared by the client.</p>
+   *
+   * @param authentication the current authenticated user
+   * @param response the HttpServletResponse to clear the cookie
+   * @return 200 OK if logout was successful
+   */
+  @PostMapping("/logout")
+  public ResponseEntity<String> logout(
+      Authentication authentication,
+      HttpServletResponse response
+  ) {
+    if (authentication != null && authentication.isAuthenticated()) {
+      logger.info("User {} logging out", authentication.getName());
+    }
+
+    Cookie refreshTokenCookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, null);
+    refreshTokenCookie.setHttpOnly(true);
+    refreshTokenCookie.setSecure(true);
+    refreshTokenCookie.setPath("/");
+    refreshTokenCookie.setMaxAge(0);
+    response.addCookie(refreshTokenCookie);
+
+    return ResponseEntity.ok("Logged out successfully");
   }
 }
