@@ -111,9 +111,9 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable) // CSRF unnecessary for stateless JWT authentication
         .authorizeHttpRequests(auth -> {
           auth.requestMatchers("/auth/**").permitAll();
-          auth.requestMatchers(HttpMethod.POST, "/users", "/users/").permitAll();
-          auth.requestMatchers("/admin/**").hasRole("ADMIN");
-          auth.requestMatchers("/users/**").hasAnyRole("ADMIN", "USER");
+          auth.requestMatchers("/auth/me").authenticated();
+          auth.requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole("ADMIN", "USER");
+          auth.requestMatchers("/users/**").hasRole("ADMIN");
           auth.anyRequest().authenticated();
         });
     http
@@ -157,6 +157,7 @@ public class SecurityConfig {
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
     configuration.setAllowCredentials(true);
     configuration.setAllowedHeaders(List.of("*"));
+    configuration.setExposedHeaders(List.of("Authorization"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
