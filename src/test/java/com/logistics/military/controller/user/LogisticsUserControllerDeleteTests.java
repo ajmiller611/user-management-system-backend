@@ -64,9 +64,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(LogisticsUserController.class)
 @Import({SecurityConfig.class, AppConfig.class})
 @ActiveProfiles("test")
+@WithMockUser(roles = "ADMIN")
 class LogisticsUserControllerDeleteTests {
 
-  @InjectMocks private LogisticsUserController logisticsUserController;
   @Autowired private MockMvc mockMvc;
   @MockBean private LogisticsUserService logisticsUserService;
   @MockBean private TokenService tokenService;
@@ -79,7 +79,6 @@ class LogisticsUserControllerDeleteTests {
    * Verifies that a valid user id returns ok (200) and logs the request correctly.
    */
   @Test
-  @WithMockUser
   void givenValidUserIdWhenDeleteUserThenReturnSuccess() throws Exception {
     try (LogCaptor logCaptor = LogCaptor.forClass(LogisticsUserController.class)) {
       Long validUserId = 2L;
@@ -103,7 +102,6 @@ class LogisticsUserControllerDeleteTests {
    * Verifies that invalid user id returns a bad request (400).
    */
   @Test
-  @WithMockUser
   void givenInvalidUserIdWhenDeleteUserThenReturnBadRequest() throws Exception {
     Long invalidUserId = -1L;
     mockMvc.perform(delete("/users/-1"))
@@ -134,7 +132,6 @@ class LogisticsUserControllerDeleteTests {
    * Verifies that non-existing user id returns a bad request (400).
    */
   @Test
-  @WithMockUser
   void givenNonExistingUserIdWhenDeleteUserThenThrowsUserNotFoundException() throws Exception {
     Long nonExistentUserId = 3L;
     doThrow(new UserNotFoundException("User with id 3 does not exist", "deleteUser"))

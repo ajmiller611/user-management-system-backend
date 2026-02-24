@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -28,23 +29,21 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.Set;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -73,7 +72,6 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class AuthenticationControllerTests {
 
-  @InjectMocks private AuthenticationController authenticationController;
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockBean private AuthenticationService authenticationService;
@@ -125,19 +123,25 @@ class AuthenticationControllerTests {
           .andExpect(status().isOk())
           .andExpect(header().string(HttpHeaders.AUTHORIZATION, "Bearer access_token_value"))
           .andExpect(cookie().value("refresh_token", "refresh_token_value"))
+          .andExpect(cookie().httpOnly("refresh_token", true))
+          .andExpect(cookie().secure("refresh_token", true))
+          .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60))
+          .andExpect(cookie().sameSite("refresh_token", "Lax"))
           .andExpect(jsonPath("$.userId").value(testUser.getUserId()))
           .andExpect(jsonPath("$.username").value(testUser.getUsername()))
-          .andExpect(jsonPath("$.email").value(testUser.getEmail()));
+          .andExpect(jsonPath("$.email").value(testUser.getEmail()))
+          .andExpect(jsonPath("$.roles[0]").value("USER"));
 
       verify(authenticationService).loginUser(any(UserRequestDto.class));
+
+      System.out.println(logCaptor.getLogs());
 
       // Verify the log entry of received request
       assertThat(logCaptor.getInfoLogs())
           .withFailMessage("Expected logs to include information about the received "
               + "login request but it was missing.")
-          .anyMatch(log -> log.contains("Endpoint /auth/login received request:")
-              && log.contains(testUser.getUsername())
-              && log.contains(testUser.getEmail()));
+          .anyMatch(log -> log.contains("Login attempt for username")
+              && log.contains(testUser.getUsername()));
 
       // Verify the log entry of the response
       assertThat(logCaptor.getInfoLogs())
@@ -193,6 +197,15 @@ class AuthenticationControllerTests {
    */
   @Test
   void givenValidRefreshTokenWhenRefreshTokenThenReturnOkResponse() throws Exception {
+    Role role = new Role("USER");
+
+    LogisticsUserDto userDto = new LogisticsUserDto(
+        2L,
+        "testUser",
+        "test@example.com",
+        fixedTimestamp,
+        Set.of(role)
+    );
     Cookie validRefreshTokenCookie = new Cookie("refresh_token", "validToken");
 
     Jwt validJwt = mock(Jwt.class);
@@ -202,13 +215,13 @@ class AuthenticationControllerTests {
     when(jwtDecoder.decode("validToken")).thenReturn(validJwt);
     when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
 
-    Authentication auth = new UsernamePasswordAuthenticationToken(
-        "testUser",
-        null,
-        Collections.emptyList()
-    );
-    when(tokenService.generateAccessToken(auth)).thenReturn("newAccessToken");
-    when(tokenService.generateRefreshToken(auth)).thenReturn("newRefreshToken");
+    when(logisticsUserService.getUserByUsername("testUser"))
+        .thenReturn(userDto);
+
+    when(tokenService.generateAccessToken(any(Authentication.class)))
+        .thenReturn("newAccessToken");
+    when(tokenService.generateRefreshToken(any(Authentication.class)))
+        .thenReturn("newRefreshToken");
 
     mockMvc.perform(post("/auth/refresh-token")
         .cookie(validRefreshTokenCookie))
@@ -217,7 +230,8 @@ class AuthenticationControllerTests {
         .andExpect(cookie().value("refresh_token", "newRefreshToken"))
         .andExpect(cookie().httpOnly("refresh_token", true))
         .andExpect(cookie().secure("refresh_token", true))
-        .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60));
+        .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60))
+        .andExpect(cookie().sameSite("refresh_token", "Lax"));
   }
 
   /**
@@ -266,5 +280,67 @@ class AuthenticationControllerTests {
             .cookie(invalidRefreshTokenCookie))
         .andExpect(status().isBadRequest())
         .andExpect(content().string("Invalid token"));
+  }
+
+  /**
+   * Test that the /auth/me/ endpoint responds with the current authenticated user details.
+   */
+  @Test
+  @WithMockUser(username = "testUser", roles = {"USER"})
+  void givenAuthenticatedUserWhenGetCurrentUserThenReturnUserDetails() throws Exception {
+    Role role = new Role("USER");
+
+    LogisticsUserDto userDto = new LogisticsUserDto(
+        1L,
+        "testUser",
+        "test@example.com",
+        fixedTimestamp,
+        Set.of(role)
+    );
+
+    when(logisticsUserService.getUserByUsername("testUser")).thenReturn(userDto);
+
+    mockMvc.perform(get("/auth/me"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.username").value("testUser"))
+        .andExpect(jsonPath("$.email").value("test@example.com"));
+
+  }
+
+  /**
+   * Test that the /auth/me endpoint responds with 401 Unauthorized
+   * when no authenticated user is present.
+   *
+   */
+  @Test
+  void givenNoAuthenticationWhenGetCurrentUserThenReturnUnauthorized() throws Exception {
+    mockMvc.perform(get("/auth/me"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  /**
+   * Test that an authenticated user calling /auth/logout
+   * clears the refresh token cookie and returns 200 OK with success message.
+   */
+  @Test
+  @WithMockUser(username = "testUser", roles = "USER")
+  void givenAuthenticatedUserWhenLogoutThenRefreshTokenCookieCleared() throws Exception {
+    mockMvc.perform(post("/auth/logout"))
+        .andExpect(status().isOk())
+        .andExpect(content().string("Logged out successfully"))
+        .andExpect(cookie().maxAge("refresh_token", 0))
+        .andExpect(cookie().httpOnly("refresh_token", true))
+        .andExpect(cookie().secure("refresh_token", true));
+  }
+
+  /**
+   * Test that calling /auth/logout without authentication
+   * still returns 200 OK and clears the refresh token cookie.
+   */
+  @Test
+  void givenNoAuthenticationWhenLogoutThenReturnOk() throws Exception {
+    mockMvc.perform(post("/auth/logout"))
+        .andExpect(status().isOk())
+        .andExpect(cookie().maxAge("refresh_token", 0));
   }
 }

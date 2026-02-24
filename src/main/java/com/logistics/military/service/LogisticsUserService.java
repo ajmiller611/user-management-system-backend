@@ -205,6 +205,25 @@ public class LogisticsUserService implements UserDetailsService {
   /**
    * Loads a user by their username.
    *
+   * <p>This method is used by controllers to return a user in DTO from.
+   * It retrieves a user based on their username and returns their details,
+   * which include credentials and authorities.
+   * </p>
+   *
+   * @param username the username of the user to load
+   * @return the {@link UserDetails} containing user information for authentication
+   */
+  @CheckUserExistence
+  public LogisticsUserDto getUserByUsername(String username) {
+    LogisticsUser user = logisticsUserRepository.findByUsername(username)
+        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+    return mapToUserDto(user);
+  }
+
+  /**
+   * Loads a user by their username.
+   *
    * <p>This method is required by {@link UserDetailsService} and is used by Spring Security
    * to authenticate a user. It retrieves a user based on their username and returns their
    * details, which include credentials and authorities.

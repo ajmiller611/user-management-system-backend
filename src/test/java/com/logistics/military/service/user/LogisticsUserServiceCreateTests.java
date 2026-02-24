@@ -199,4 +199,34 @@ class LogisticsUserServiceCreateTests {
         "Expected loadUserByUsername to throw exception when user does not exist.");
     verify(logisticsUserRepository, times(1)).findByUsername(username);
   }
+
+  /**
+   * Verify an existing user's {@link LogisticsUserDto} is return during a controller's query.
+   */
+  @Test
+  void givenUserExistsWhenGetUserByUsernameThenReturnLogisticsUserDto() {
+    String username = "testUser";
+    when(logisticsUserRepository.findByUsername(username)).thenReturn(Optional.of(user));
+
+    LogisticsUserDto userDto = logisticsUserService.getUserByUsername(username);
+
+    assertNotNull(userDto, "LogisticUserDto should not be null");
+    assertEquals(username, userDto.getUsername(), "Usernames should match");
+    verify(logisticsUserRepository, times(1)).findByUsername(username);
+  }
+
+  /**
+   * Verify a {@link UsernameNotFoundException} is thrown when a user does not exist during
+   * controllers request for user details.
+   */
+  @Test
+  void givenUserDoesNotExistsWhenGetUserByUsernameThenThrowUsernameNotFoundException() {
+    String username = "invalidUser";
+    when(logisticsUserRepository.findByUsername(username)).thenReturn(Optional.empty());
+
+    assertThrows(UsernameNotFoundException.class,
+        () -> logisticsUserService.getUserByUsername(username),
+        "Expected getUserByUsername to throw exception when user does not exist.");
+    verify(logisticsUserRepository, times(1)).findByUsername(username);
+  }
 }

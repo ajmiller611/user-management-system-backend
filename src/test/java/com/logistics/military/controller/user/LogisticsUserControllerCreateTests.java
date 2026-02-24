@@ -36,6 +36,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -76,9 +77,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(LogisticsUserController.class)
 @Import({SecurityConfig.class, AppConfig.class})
 @ActiveProfiles("test")
+@WithMockUser(roles = "ADMIN")
 class LogisticsUserControllerCreateTests {
 
-  @InjectMocks private LogisticsUserController logisticsUserController;
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockBean private LogisticsUserService logisticsUserService;
