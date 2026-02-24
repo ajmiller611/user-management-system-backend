@@ -92,11 +92,17 @@ public class SecurityConfig {
   /**
    * Configures the security filter chain to define how HTTP requests are authorized.
    *
-   * <p>This method sets up rules for authorizing HTTP requests, such as which endpoints are
-   * publicly accessible (e.g., "/auth/**", "/users", "/users/"), which require specific roles
-   * (e.g., "/admin/**" requires "ADMIN" role), and which require authentication. It also disables
-   * CSRF and configures session management to be stateless, since the REST API uses JWT for
-   * stateless authentication and CSRF is unnecessary.
+   * <p>This method sets up rules for authorizing HTTP requests to endpoints, including:
+   *  - Publicly accessible endpoints (/auth/**)
+   *  - Endpoints that require authentication (/auth/me)
+   *  - Role-based access to user endpoints (GET /users/** for ADMIN/USER, all others require ADMIN)
+   *  </p>
+   *
+   * <p>Other important security configurations:
+   * - CSRF is disabled because JWT authentication is stateless and not vulnerable to CSRF.
+   * - CORS is configured to allow requests only from trusted origins.
+   * - Refresh tokens are stored in HTTP-only cookies with SameSite protection,
+   *   reducing the CSRF attack surface.
    * </p>
    *
    * @param http the {@link HttpSecurity} object used to configure HTTP security settings
@@ -108,7 +114,7 @@ public class SecurityConfig {
     http
         .cors(cors -> cors
             .configurationSource(apiCorsConfigurationSource()))
-        .csrf(AbstractHttpConfigurer::disable) // CSRF unnecessary for stateless JWT authentication
+        .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> {
           auth.requestMatchers("/auth/**").permitAll();
           auth.requestMatchers("/auth/me").authenticated();

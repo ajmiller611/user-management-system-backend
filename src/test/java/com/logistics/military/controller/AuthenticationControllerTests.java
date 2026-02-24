@@ -123,6 +123,10 @@ class AuthenticationControllerTests {
           .andExpect(status().isOk())
           .andExpect(header().string(HttpHeaders.AUTHORIZATION, "Bearer access_token_value"))
           .andExpect(cookie().value("refresh_token", "refresh_token_value"))
+          .andExpect(cookie().httpOnly("refresh_token", true))
+          .andExpect(cookie().secure("refresh_token", true))
+          .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60))
+          .andExpect(cookie().sameSite("refresh_token", "Lax"))
           .andExpect(jsonPath("$.userId").value(testUser.getUserId()))
           .andExpect(jsonPath("$.username").value(testUser.getUsername()))
           .andExpect(jsonPath("$.email").value(testUser.getEmail()))
@@ -226,7 +230,8 @@ class AuthenticationControllerTests {
         .andExpect(cookie().value("refresh_token", "newRefreshToken"))
         .andExpect(cookie().httpOnly("refresh_token", true))
         .andExpect(cookie().secure("refresh_token", true))
-        .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60));
+        .andExpect(cookie().maxAge("refresh_token", 7 * 24 * 60 * 60))
+        .andExpect(cookie().sameSite("refresh_token", "Lax"));
   }
 
   /**

@@ -11,6 +11,7 @@ import com.logistics.military.service.LogisticsUserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -75,13 +77,17 @@ public class AuthenticationController {
     if (authTokensDto.getAccessToken() != null && !authTokensDto.getAccessToken().isEmpty())  {
       response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + authTokensDto.getAccessToken());
 
-      Cookie refreshTokenCookie =
-          new Cookie(REFRESH_TOKEN_COOKIE_NAME, authTokensDto.getRefreshToken());
-      refreshTokenCookie.setHttpOnly(true);
-      refreshTokenCookie.setSecure(true); // Requires HTTPS in production
-      refreshTokenCookie.setPath("/");
-      refreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
-      response.addCookie(refreshTokenCookie);
+      // Refresh token cookie set to HTTP-only, secure, and SameSite=Lax
+      // to reduce CSRF attack surface.
+      ResponseCookie refreshCookie =
+          ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, authTokensDto.getRefreshToken())
+              .httpOnly(true)
+              .secure(true)
+              .path("/")
+              .maxAge(Duration.ofDays(7))
+              .sameSite("Lax")
+              .build();
+      response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
       List<String> roles = authTokensDto.getLogisticsUserDto().getAuthorities()
           .stream()
@@ -171,12 +177,16 @@ public class AuthenticationController {
       response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccessToken);
 
       // Create the refresh token cookie
-      Cookie newRefreshTokenCookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, newRefreshToken);
-      newRefreshTokenCookie.setHttpOnly(true);
-      newRefreshTokenCookie.setSecure(true); // Requires HTTPS is used in production
-      newRefreshTokenCookie.setPath("/");
-      newRefreshTokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days expiration
-      response.addCookie(newRefreshTokenCookie);
+      ResponseCookie refreshCookie =
+          ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, newRefreshToken)
+              .httpOnly(true)
+              .secure(true)
+              .path("/")
+              .maxAge(Duration.ofDays(7))
+              .sameSite("Lax")
+              .build();
+
+      response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
       // Return 200 ok
       return ResponseEntity.ok().build();
