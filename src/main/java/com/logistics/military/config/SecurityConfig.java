@@ -1,9 +1,9 @@
 package com.logistics.military.config;
 
 import com.logistics.military.security.JwtAuthenticationFilter;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -45,6 +45,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+  @Value("${FRONTEND_ORIGIN}")
+  private String frontendOrigin;
 
   private final JwtAuthenticationFilter jwtAuthFilter;
   private final JwtAuthenticationConverter jwtAuthenticationConverter;
@@ -155,11 +158,8 @@ public class SecurityConfig {
    */
   @Bean
   UrlBasedCorsConfigurationSource apiCorsConfigurationSource() {
-    Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-    String allowedOrigin = dotenv.get("FRONTEND_ORIGIN");
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(
-        List.of(allowedOrigin == null ? System.getenv("FRONTEND_ORIGIN") : allowedOrigin));
+    configuration.setAllowedOrigins(List.of(frontendOrigin));
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
     configuration.setAllowCredentials(true);
     configuration.setAllowedHeaders(List.of("*"));

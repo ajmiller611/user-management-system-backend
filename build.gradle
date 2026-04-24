@@ -109,8 +109,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.cloud:spring-cloud-starter-config'
 
-	// Libraries for configuration and security.
-	implementation "io.github.cdimascio:dotenv-java:${dotenvJavaVersion}" // .env file support.
+	// Libraries for security.
 	implementation "io.jsonwebtoken:jjwt:${jjwtVersion}" // JWT library for token-based authentication.
 
 	// Compile-time tools

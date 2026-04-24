@@ -28,6 +28,7 @@ import org.mockito.Mock;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -50,6 +51,7 @@ class MilitaryLogisticsApplicationTests {
   @Mock private RoleRepository roleRepository;
   @Mock private LogisticsUserRepository logisticsUserRepository;
   @Mock private PasswordEncoder passwordEncoder;
+  @Mock private Environment env;
   @Mock private Clock clock;
   @InjectMocks private MilitaryLogisticsApplication application;
 
@@ -95,6 +97,8 @@ class MilitaryLogisticsApplicationTests {
     Role userRole = new Role("USER");
     userRole.setRoleId(2); // Manually set the id in the mocked role instance
     when(roleRepository.save(any(Role.class))).thenReturn(adminRole).thenReturn(userRole);
+
+    when(env.getProperty("ADMIN_PASSWORD")).thenReturn("test-password");
 
     LogisticsUser adminUser = new LogisticsUser(
         1L,
