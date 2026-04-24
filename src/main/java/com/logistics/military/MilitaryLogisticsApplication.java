@@ -4,11 +4,11 @@ import com.logistics.military.model.LogisticsUser;
 import com.logistics.military.model.Role;
 import com.logistics.military.repository.LogisticsUserRepository;
 import com.logistics.military.repository.RoleRepository;
-import io.github.cdimascio.dotenv.Dotenv;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +16,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
@@ -26,9 +27,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * It creates default roles(e.g. "ADMIN", "USER") and an Admin user.
  * </p>
  */
+@RequiredArgsConstructor
 @SpringBootApplication
 public class MilitaryLogisticsApplication {
 
+  private final Environment env;
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   /**
@@ -81,12 +84,10 @@ public class MilitaryLogisticsApplication {
       roles.add(adminRole);
       roles.add(userRole);
 
-      Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-      String passwordFromEnv = dotenv.get("ADMIN_PASSWORD");
+      String passwordFromEnv = env.getProperty("ADMIN_PASSWORD");
 
-      // Get password for GitHub actions workflow
-      if (passwordFromEnv == null) {
-        passwordFromEnv = System.getenv("ADMIN_PASSWORD");
+      if (passwordFromEnv == null || passwordFromEnv.isBlank()) {
+        throw new IllegalStateException("ADMIN_PASSWORD is not set");
       }
 
       // Create a user with admin role.
