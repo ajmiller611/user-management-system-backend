@@ -2,19 +2,22 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: postgres_local
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DB_HOST: postgres
     ports:
-      - "${DB_PORT}:5432" # Mapping host port to Postgres default port in the container
+      - "5432:5432" # Mapping host port to Postgres default port in the container
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
     networks:
       - backend
     healthcheck:
       # Check if the PostgreSQL service is ready
-      test: ["CMD-SHELL", "pg_isready -U $DB_USERNAME -d $DB_NAME"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,19 +25,25 @@ services:
   app:
     build:
       context: .
+    restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:${DB_PORT}/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
-      - "${APP_PORT}:8080" # Mapping host port to Spring boot default port in the container
+      - "8080:8080" # Mapping host port to Spring boot default port in the container
     networks:
       - backend
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+    name: users_system_postgres_data
 
 networks:
   backend:
