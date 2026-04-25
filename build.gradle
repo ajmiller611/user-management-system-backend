@@ -11,7 +11,7 @@ plugins {
 	id 'idea' // Configures IntelliJ IDEA project settings.
 }
 
-group = 'com.logistics'
+group = 'io.github.ajmiller611.usermanagement'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -218,10 +218,10 @@ checkstyle {
 
 sonarqube {
 	properties {
-		property("sonar.projectKey", "ajmiller611_military-logistics-mgmt")
+		property("sonar.projectName", "User Management System")
+		property("sonar.projectKey", "ajmiller611_user-management-system")
 		property("sonar.organization", "ajmiller611")
 		property("sonar.host.url", "https://sonarcloud.io")
-		property("sonar.token", System.getenv("SONAR_TOKEN"))
 		property("sonar.sourceEncoding", "UTF-8")
 		property("sonar.sources", "src/main/java")
 		property("sonar.tests", "src/test/java, src/integrationTest/java")

@@ -1,4 +1,4 @@
-# Continuous Integration Workflow for Military Logistics Management Application
+# Continuous Integration Workflow for User Management Application
 name: CI Workflow
 
 # Trigger the workflow on push and pull requests
