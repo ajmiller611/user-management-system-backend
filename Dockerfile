@@ -3,7 +3,7 @@ FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 COPY . .
 
-RUN ./gradlew clean build -x test
+RUN ./gradlew clean build -x test -x integrationTest
 
 FROM eclipse-temurin:21-jdk-jammy
 
