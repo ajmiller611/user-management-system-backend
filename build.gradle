@@ -107,7 +107,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.cloud:spring-cloud-starter-config'
 
 	// Libraries for security.
 	implementation "io.jsonwebtoken:jjwt:${jjwtVersion}" // JWT library for token-based authentication.
@@ -122,12 +121,6 @@ dependencies {
 	// Runtime dependencies
 	runtimeOnly "org.postgresql:postgresql:${postgresqlVersion}" // PostgreSQL JDBC driver.
 
-}
-
-dependencyManagement {
-	imports {
-		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudBomVersion}"
-	}
 }
 
 tasks.withType(JavaCompile).configureEach {

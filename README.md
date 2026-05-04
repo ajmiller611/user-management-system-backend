@@ -1,6 +1,6 @@
-# User Management System (Backend)
+# User Management System (Backend API)
 
-Backend service for a secure, role-based user management system built with Spring Boot.  
+Backend API for a secure, role-based user management system built with Spring Boot.  
 Focus: authentication, authorization, testing strategy, and production-style backend engineering.
 
 ---
@@ -12,8 +12,33 @@ Focus: authentication, authorization, testing strategy, and production-style bac
 - Role-based authorization (ADMIN, USER)
 - Layered architecture (Controller → Service → Repository)
 - Unit + integration testing (H2 + PostgreSQL)
-- Fully containerized with Docker Compose
+- Fully containerized with Docker Compose for local development
 - CI pipeline with tests, linting, coverage, and SonarCloud
+- Deployed backend API (Render)
+
+---
+
+## Live Deployment
+
+### Backend API
+
+https://user-management-backend-6zmq.onrender.com
+
+This backend is deployed on Render and serves the production frontend application.
+
+Note: Authentication required for most endpoints (JWT Bearer token).
+
+---
+
+## System Architecture (Deployed Environment)
+
+```
+Frontend (Vercel)
+   ↓
+Backend API (Render)
+   ↓
+PostgreSQL (Neon)
+```
 
 ---
 
@@ -139,13 +164,27 @@ DELETE /users/{id}     (ADMIN only)
 
 ## Getting Started
 
-### Prerequisites
-- Docker
-- Docker Compose
+This backend can be accessed via a deployed production API or run locally using Docker.
 
 ---
 
-### Run Project
+## Production API (Recommended for Review)
+
+The backend is deployed and available at:
+https://user-management-backend-6zmq.onrender.com
+
+Most endpoints require authentication via JWT.
+
+---
+
+## Local Development Setup
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### Setup & Run
 
 ```bash
 git clone https://github.com/ajmiller611/user-management-system-backend.git
@@ -154,7 +193,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Backend runs on:
+Backend will run at:
 ```
 http://localhost:8080 (or value defined by SERVER_PORT in .env)
 ```
