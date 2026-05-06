@@ -1,20 +1,37 @@
 # User Management System (Backend API)
 
-Backend API for a secure, role-based user management system built with Spring Boot.  
-Focus: authentication, authorization, testing strategy, and production-style backend engineering.
+A production-style Spring Boot backend demonstrating secure authentication,
+role-based authorization, and real-world backend system design.
+
+Includes JWT authentication, CI/CD, and admin-controlled system operations
+to simulate a production-ready user management system.
 
 ---
 
-## Quick Highlights
+## Engineering Highlights
 
-- JWT authentication with RSA-signed tokens
-- Access + refresh token system (HTTP-only cookies)
-- Role-based authorization (ADMIN, USER)
+### Security & Authentication
+- JWT authentication with access + refresh tokens (HTTP-only cookies)
+- Role-Based Access Control (ADMIN / USER)
+
+### Backend Architecture
 - Layered architecture (Controller → Service → Repository)
-- Unit + integration testing (H2 + PostgreSQL)
-- Fully containerized with Docker Compose for local development
-- CI pipeline with tests, linting, coverage, and SonarCloud
-- Deployed backend API (Render)
+- Stateless REST API design using Spring Security
+- Global exception handling with @ControllerAdvice
+
+### System Design Patterns
+- Application bootstrap initialization (roles + admin user)
+- Admin-controlled demo reset endpoint for restoring system state
+
+### Testing & Quality
+- Unit tests (H2) + integration tests (PostgreSQL)
+- CI pipeline with automated testing, Checkstyle, and SonarCloud
+
+### DevOps
+- Dockerized local development (Docker Compose)
+- Production deployment (Render)
+
+This design prioritizes security, scalability, and reproducibility across environments.
 
 ---
 
@@ -24,21 +41,9 @@ Focus: authentication, authorization, testing strategy, and production-style bac
 
 https://user-management-backend-6zmq.onrender.com
 
-This backend is deployed on Render and serves the production frontend application.
+This backend is consumed by a Next.js frontend deployed on Vercel.
 
 Note: Authentication required for most endpoints (JWT Bearer token).
-
----
-
-## System Architecture (Deployed Environment)
-
-```
-Frontend (Vercel)
-   ↓
-Backend API (Render)
-   ↓
-PostgreSQL (Neon)
-```
 
 ---
 
@@ -52,13 +57,13 @@ PostgreSQL (Neon)
 - Gradle
 
 ### Security
-- JWT (RSA signing)
+- JWT (RSA signed tokens)
 - BCrypt password hashing
 - Stateless authentication
 - HTTP-only refresh token cookies
 
 ### Database
-- PostgreSQL (runtime + integration tests)
+- PostgreSQL (production + integration tests)
 - H2 (unit tests)
 
 ### DevOps
@@ -68,70 +73,25 @@ PostgreSQL (Neon)
 
 ---
 
-## Features
+## Key System Behaviors
 
-- User authentication (login/logout)
-- JWT-based access control
-- Refresh token workflow
-- Role-based access control (ADMIN, USER)
-- Full CRUD user management API
-- Centralized validation and exception handling
-- CORS configuration for frontend integration
+### Authentication Flow
+- Users authenticate via `/auth/login`
+- Server issues:
+    - JWT access token (Authorization header)
+    - Refresh token (HTTP-only cookie)
+- Access token is used for API authorization
+- Refresh token silently renews sessions via `/auth/refresh-token`
+- Logout invalidates refresh token
 
----
+### Security Model
+- Stateless authentication (no server session storage)
+- Role-based authorization enforced at method level
+- Sensitive endpoints protected via Spring Security filters
 
-## Architecture
-
-- Layered design:
-   - Controller → API layer
-   - Service → business logic
-   - Repository → data access
-- Stateless authentication using JWT
-- Spring Security filter chain for request protection
-- Custom JWT claims for role extraction
-- Global exception handling (`@ControllerAdvice`)
-- Validation using Jakarta Bean Validation + custom rules
-
----
-
-## Project Structure
-
-```
-src/
-  main/
-    java/io/github/ajmiller611/usermanagement/
-      controller/    # REST API endpoints
-      service/       # Business logic
-      repository/    # Data access layer (Spring Data JPA)
-      model/         # Entity classes
-      dto/           # Request/response data transfer objects
-      security/      # JWT, authentication, and security configuration
-      config/        # Application and security configuration
-      exception/     # Global exception handling
-      util/          # Utility/helper classes
-      
-    resources/
-      application.properties  # Base configuration
-      
-  test/              # Unit tests (H2)
-  integrationTest/   # Integration tests (PostgreSQL)
-```
-
----
-
-## Authentication Flow
-
-1. User logs in via `POST /auth/login`
-2. Backend authenticates credentials using Spring Security
-3. Returns:
-   - JWT access token (Authorization header)
-   - Refresh token (HTTP-only cookie)
-   - User details (id, username, email, roles)
-4. Frontend uses access token for requests
-5. Backend validates JWT on each request
-6. On expiration:
-   - `POST /auth/refresh-token` issues new tokens
-7. `POST /auth/logout` clears refresh cookie
+### System Management
+- Application bootstraps required roles and admin user on startup
+- Admin-only endpoint allows full demo reset of system state
 
 ---
 
@@ -214,42 +174,14 @@ docker compose down -v
 
 ---
 
-## Testing
+## CI/CD & Testing
 
-- Unit tests → H2 database
-- Integration tests → PostgreSQL container
-- CI runs full test suite automatically
-
-```bash
-./gradlew test
-./gradlew integrationTest
-```
-
----
-
-## CI/CD
-
-Automated GitHub Actions pipeline:
-
-- Build + dependency resolution
 - Unit tests (H2)
-- Integration tests (PostgreSQL container)
+- Integration tests (PostgreSQL)
+- GitHub Actions pipeline
 - Checkstyle (Google Java Style)
 - JaCoCo coverage reporting
 - SonarCloud quality gate
-
----
-
-## Project Goals
-
-This project demonstrates:
-
-- Secure backend architecture with Spring Security
-- Real-world JWT authentication with refresh tokens
-- Production-style system design
-- Testing strategy separation (unit vs integration)
-- CI/CD pipeline integration
-- Containerized deployment with Docker
 
 ---
 
