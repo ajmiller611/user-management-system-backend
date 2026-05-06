@@ -48,8 +48,8 @@ public class DemoResetService {
     bootstrapService.ensureRolesExist();
     bootstrapService.ensureAdminExists();
 
-    createDemoUser("testUser1", "testPassword1");
-    createDemoUser("testUser2", "testPassword2");
+    createDemoUser("user1", "user123");
+    createDemoUser("user2", "user123");
   }
 
   private void createDemoUser(String username, String password) {

@@ -45,6 +45,18 @@ This backend is consumed by a Next.js frontend deployed on Vercel.
 
 Note: Authentication required for most endpoints (JWT Bearer token).
 
+### Demo Credentials
+
+**Admin Access**
+
+- Username: admin
+- Password: admin123
+
+**User Access**
+
+- Username: user
+- Password: user123
+
 ---
 
 ## Tech Stack

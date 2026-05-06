@@ -81,6 +81,6 @@ class DemoResetServiceTests {
 
     assertThat(userCaptor.getAllValues())
         .extracting(User::getUsername)
-        .containsExactlyInAnyOrder("testUser1", "testUser2");
+        .containsExactlyInAnyOrder("user1", "user2");
   }
 }
