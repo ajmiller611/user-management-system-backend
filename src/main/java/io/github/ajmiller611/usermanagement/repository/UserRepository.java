@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -43,4 +44,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
    */
   @Query("SELECT u FROM User u WHERE NOT :role MEMBER OF u.authorities")
   Page<User> findAllWithoutRole(Pageable pageable, Role role);
+
+  /**
+   * Deletes all records from the user_role_junction table.
+   *
+   * <p>This operation removes all existing user-role associations from the many-to-many join table
+   * between users and roles.
+   *
+   * <p>This method is intended for use in resetting the demo data to an initial state.
+   *
+   * <p>The query is marked as modifying because it performs a write operation and must be executed
+   *  within a transactional context.
+   */
+  @Modifying
+  @Query(value = "DELETE FROM user_role_junction", nativeQuery = true)
+  void deleteAllUserRoleMappings();
 }
