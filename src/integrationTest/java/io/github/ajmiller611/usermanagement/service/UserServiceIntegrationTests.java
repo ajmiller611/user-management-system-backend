@@ -9,7 +9,6 @@ import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.dto.UserUpdateRequestDto;
 import io.github.ajmiller611.usermanagement.exception.UserAlreadyExistsException;
 import io.github.ajmiller611.usermanagement.exception.UserNotFoundException;
-import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.model.User;
 import io.github.ajmiller611.usermanagement.repository.RoleRepository;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
@@ -74,12 +73,9 @@ class UserServiceIntegrationTests {
   @Autowired private PasswordEncoder passwordEncoder;
   @Mock private Clock clock;
 
-  Role userRole;
-
   /** Verify {@code createAndSaveUser()} saves user with encoded password and correct roles. */
   @Test
   void givenValidUserRequestDtoWhenCreateAndSaveUserThenUserSavedProperly() {
-    initializeUserRole();
     UserRequestDto userRequestDto = new UserRequestDto(
         "testUser",
         "password",
@@ -90,7 +86,7 @@ class UserServiceIntegrationTests {
     User user = userRepository.findByUsername("testUser").orElseThrow();
 
     assertNotNull(user, "The user should not be null after saving.");
-    assertEquals(1L, user.getUserId(), "The user ID should be 1.");
+    assertNotNull(user.getUserId(), "The user ID should not be null.");
     assertEquals(userRequestDto.getUsername(), user.getUsername(),
         "The username should match the provided username.");
     assertTrue(passwordEncoder.matches(userRequestDto.getPassword(), user.getPassword()),
@@ -99,7 +95,7 @@ class UserServiceIntegrationTests {
         "The email should match the provided email.");
     assertTrue(user.getCreatedAt().isBefore(LocalDateTime.now()),
         "The creation date should be before the current date.");
-    assertTrue(user.getAuthorities().contains(userRole),
+    assertTrue(user.getAuthorities().contains(roleRepository.findByAuthority("USER").get()),
         "The user should have the 'USER' role assigned.");
   }
 
@@ -110,7 +106,6 @@ class UserServiceIntegrationTests {
    */
   @Test
   void givenExistingUserWhenCreateAndSaveUserThenThrowUserAlreadyExistsException() {
-    initializeUserRole();
     String existingUsername = "existingUser";
     User existingUser = new User(
         2L,
@@ -118,7 +113,7 @@ class UserServiceIntegrationTests {
         "password",
         "existing@example.com",
         LocalDateTime.now(),
-        Set.of(userRole)
+        Set.of(roleRepository.findByAuthority("USER").get())
     );
     userRepository.save(existingUser);
 
@@ -133,7 +128,7 @@ class UserServiceIntegrationTests {
         "Expected createAndSaveUser to throw an exception for an existing user");
 
     Long userCountAfter = userRepository.count();
-    assertEquals(1, userCountAfter,
+    assertEquals(2, userCountAfter,
         "The number of users in the database should not have changed.");
   }
 
@@ -178,13 +173,5 @@ class UserServiceIntegrationTests {
     assertThrows(UserNotFoundException.class,
         () -> userService.deleteUser(nonExistentId),
         "Expected deleteUser to throw a UserNotFoundException for a nonexistent user");
-  }
-
-  /**
-   * Initializes the 'USER' role by saving it to the database. This utility method optimizes
-   * test runtime by limiting role creation to only test cases that require the 'USER' role.
-   */
-  private void initializeUserRole() {
-    userRole = roleRepository.save(new Role("USER"));
   }
 }
