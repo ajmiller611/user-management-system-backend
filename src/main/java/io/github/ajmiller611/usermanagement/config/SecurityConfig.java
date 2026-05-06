@@ -52,6 +52,8 @@ public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthFilter;
   private final JwtAuthenticationConverter jwtAuthenticationConverter;
 
+  private static final String ADMIN = "ADMIN";
+
   /**
    * Creates a {@link PasswordEncoder} bean for securely encoding passwords.
    *
@@ -119,10 +121,11 @@ public class SecurityConfig {
             .configurationSource(apiCorsConfigurationSource()))
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> {
+          auth.requestMatchers("/admin/**").hasRole(ADMIN);
           auth.requestMatchers("/auth/**").permitAll();
           auth.requestMatchers("/auth/me").authenticated();
-          auth.requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole("ADMIN", "USER");
-          auth.requestMatchers("/users/**").hasRole("ADMIN");
+          auth.requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole(ADMIN, "USER");
+          auth.requestMatchers("/users/**").hasRole(ADMIN);
           auth.anyRequest().authenticated();
         });
     http
