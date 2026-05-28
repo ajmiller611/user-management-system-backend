@@ -12,7 +12,7 @@ import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.model.User;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -60,7 +60,7 @@ class AuthenticationServiceTests {
   @Mock private AuthenticationManager authenticationManager;
   @Mock private UserService userService;
   @Mock private UserRepository userRepository;
-  @Mock private TokenService tokenService;
+  @Mock private JwtService jwtService;
 
   LocalDateTime fixedTimestamp = LocalDateTime.of(2024, 11, 17, 0, 0, 0, 0);
   Clock fixedClock =
@@ -121,7 +121,7 @@ class AuthenticationServiceTests {
   @Test
   void givenValidCredentialsWhenLoginUserThenReturnAuthTokensDto() {
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(auth);
-    when(tokenService.generateTokens(auth)).thenReturn(tokens);
+    when(jwtService.generateTokens(auth)).thenReturn(tokens);
     when(userRepository.findByUsername("validUser"))
         .thenReturn(Optional.of(user));
     when(userService.mapToUserDto(user)).thenReturn(userDto);

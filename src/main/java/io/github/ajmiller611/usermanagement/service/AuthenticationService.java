@@ -5,7 +5,7 @@ import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.exception.UserNotFoundException;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class AuthenticationService {
   private final AuthenticationManager authenticationManager;
   private final UserRepository userRepository;
   private final UserService userService;
-  private final TokenService tokenService;
+  private final JwtService jwtService;
 
   /**
    * Authenticates a user and returns a {@link AuthTokensDto} object containing the
@@ -63,7 +63,7 @@ public class AuthenticationService {
       logger.info("Authentication successful for {}", userRequestDto.getUsername());
 
       // Generate JWT tokens upon successful authentication
-      Map<String, String> tokens = tokenService.generateTokens(auth);
+      Map<String, String> tokens = jwtService.generateTokens(auth);
 
       // Query the database for the user's data
       UserDto userDto = userService.mapToUserDto(

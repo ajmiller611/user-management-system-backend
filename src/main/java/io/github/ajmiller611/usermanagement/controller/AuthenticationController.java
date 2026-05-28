@@ -5,7 +5,7 @@ import io.github.ajmiller611.usermanagement.dto.LoginResponseDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.model.Role;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.AuthenticationService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -48,7 +48,7 @@ public class AuthenticationController {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   private final AuthenticationService authenticationService;
-  private final TokenService tokenService;
+  private final JwtService jwtService;
   private final UserService userService;
 
   public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
@@ -151,7 +151,7 @@ public class AuthenticationController {
       }
 
       // Decode the refresh token to extract claims
-      Jwt decodedJwt = tokenService.jwtDecoder().decode(refreshToken);
+      Jwt decodedJwt = jwtService.jwtDecoder().decode(refreshToken);
 
       // Extract the username or subject from the refresh token
       String username = decodedJwt.getSubject();
@@ -171,8 +171,8 @@ public class AuthenticationController {
           null,
           userDto.getAuthorities()
       );
-      String newAccessToken = tokenService.generateAccessToken(auth);
-      String newRefreshToken = tokenService.generateRefreshToken(auth);
+      String newAccessToken = jwtService.generateAccessToken(auth);
+      String newRefreshToken = jwtService.generateRefreshToken(auth);
 
       response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccessToken);
 

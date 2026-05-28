@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.ajmiller611.usermanagement.config.SecurityConfig;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.DemoResetService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,7 @@ class DemoResetControllerTests {
   @Autowired private MockMvc mockMvc;
   @MockBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockBean private JwtDecoder jwtDecoder;
-  @MockBean private TokenService tokenService;
+  @MockBean private JwtService jwtService;
   @MockBean private UserDetailsService userDetailsService;
   @MockBean private DemoResetService demoResetService;
 

@@ -30,9 +30,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.test.context.ActiveProfiles;
 
 /**
- * Unit tests for the {@link TokenService} class.
+ * Unit tests for the {@link JwtService} class.
  *
- * <p>This test class verifies the functionality of the {@code TokenService} methods for generating,
+ * <p>This test class verifies the functionality of the {@code JwtService} methods for generating,
  * decoding, and validating JWT tokens. It ensures that the JWTs generated have valid claims,
  * expected roles, and correct expiration times. The tests also check the configuration of
  * {@link JwtAuthenticationConverter} for appropriate role prefixing.
@@ -48,22 +48,22 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
-class TokenServiceTests {
+class JwtServiceTests {
 
-  @InjectMocks private TokenService tokenService;
+  @InjectMocks private JwtService jwtService;
 
   Authentication auth;
   String username;
 
   /**
    * Sets up the testing environment before each test case.
-   * Initializes {@code TokenService} with mock RSA keys and configures
+   * Initializes {@code JwtService} with mock RSA keys and configures
    * {@code Authentication} with a sample username and authority.
    */
   @BeforeEach
   void setUp() {
     RsaKeyProperties keys = new RsaKeyProperties();
-    tokenService = new TokenService(keys);
+    jwtService = new JwtService(keys);
 
     username = "testUser";
     Collection<? extends GrantedAuthority> authorities =
@@ -78,7 +78,7 @@ class TokenServiceTests {
    */
   @Test
   void givenValidKeysWhenJwtEncoderThenReturnValidJwtEncoder() {
-    JwtEncoder jwtEncoder = tokenService.jwtEncoder();
+    JwtEncoder jwtEncoder = jwtService.jwtEncoder();
 
     assertNotNull(jwtEncoder, "JwtEncoder should not be null");
     assertInstanceOf(NimbusJwtEncoder.class, jwtEncoder,
@@ -91,7 +91,7 @@ class TokenServiceTests {
    */
   @Test
   void givenValidKeysWhenJwtDecoderThenReturnValidJwtDecoder() {
-    JwtDecoder jwtDecoder = tokenService.jwtDecoder();
+    JwtDecoder jwtDecoder = jwtService.jwtDecoder();
 
     assertNotNull(jwtDecoder, "JwtDecoder should not be null");
     assertInstanceOf(NimbusJwtDecoder.class, jwtDecoder,
@@ -105,10 +105,10 @@ class TokenServiceTests {
    */
   @Test
   void givenValidAuthenticationWhenGenerateAccessTokenThenReturnAccessTokenString() {
-    String token = tokenService.generateAccessToken(auth);
+    String token = jwtService.generateAccessToken(auth);
     assertNotNull(token, "Access token should not be null");
 
-    Map<String, Object> claims = tokenService.decodeJwt(token);
+    Map<String, Object> claims = jwtService.decodeJwt(token);
     assertEquals(username, claims.get("sub"), "Subject claim should match the username");
     assertEquals("self", claims.get("iss"), "Issuer claim should be 'self'");
     assertEquals("USER", claims.get("roles"), "Roles claim should match 'USER'");
@@ -132,10 +132,10 @@ class TokenServiceTests {
    */
   @Test
   void givenValidAuthenticationWhenGenerateRefreshTokenThenReturnRefreshTokenString() {
-    String token = tokenService.generateRefreshToken(auth);
+    String token = jwtService.generateRefreshToken(auth);
     assertNotNull(token, "Refresh token should not be null");
 
-    Map<String, Object> claims = tokenService.decodeJwt(token);
+    Map<String, Object> claims = jwtService.decodeJwt(token);
     assertEquals(username, claims.get("sub"), "Subject claim should match the username");
     assertEquals("self", claims.get("iss"), "Issuer claim should be 'self'");
 
@@ -153,10 +153,10 @@ class TokenServiceTests {
    */
   @Test
   void givenValidAuthenticationWhenGenerateTokensThenReturnMapOfStringTokens() {
-    Map<String, String> tokens = tokenService.generateTokens(auth);
+    Map<String, String> tokens = jwtService.generateTokens(auth);
     assertNotNull(tokens, "Token map should not be null");
 
-    Map<String, Object> accessTokenClaims = tokenService.decodeJwt(tokens.get("accessToken"));
+    Map<String, Object> accessTokenClaims = jwtService.decodeJwt(tokens.get("accessToken"));
     assertNotNull(accessTokenClaims, "Access token claims should not be null");
     assertEquals(username, accessTokenClaims.get("sub"), "Subject claim should match the username");
     assertEquals("self", accessTokenClaims.get("iss"), "Issuer claim should be 'self'");
@@ -169,7 +169,7 @@ class TokenServiceTests {
     assertTrue(expiresAt.isBefore(expirationTime) && expiresAt.isAfter(now),
         "Token expiration time should be within 15 minutes from now");
 
-    Map<String, Object> refreshTokenClaims = tokenService.decodeJwt(tokens.get("refreshToken"));
+    Map<String, Object> refreshTokenClaims = jwtService.decodeJwt(tokens.get("refreshToken"));
     assertNotNull(refreshTokenClaims, "Refresh token claims should not be null");
 
     assertEquals(username, refreshTokenClaims.get("sub"),
@@ -193,7 +193,7 @@ class TokenServiceTests {
    */
   @Test
   void givenValidJwtTokenWhenDecodeJwtThenReturnMapOfClaims() {
-    String token = tokenService.generateAccessToken(auth);
+    String token = jwtService.generateAccessToken(auth);
     Instant now = Instant.now();
     Map<String, Object> claimsMap = Map.of(
         "sub", username,
@@ -203,7 +203,7 @@ class TokenServiceTests {
         "exp", now.plus(1, ChronoUnit.HOURS)
     );
 
-    Map<String, Object> result = tokenService.decodeJwt(token);
+    Map<String, Object> result = jwtService.decodeJwt(token);
 
     assertNotNull(result, "Decoded claims should not be null");
     assertEquals(claimsMap.get("sub"), result.get("sub"),
@@ -231,7 +231,7 @@ class TokenServiceTests {
   @Test
   void givenJwtAuthenticationConverterBeanWhenJwtAuthenticationConverterThenVerifyConfiguration() {
     JwtAuthenticationConverter jwtAuthenticationConverter =
-        tokenService.jwtAuthenticationConverter();
+        jwtService.jwtAuthenticationConverter();
     assertNotNull(jwtAuthenticationConverter);
 
     Jwt jwt = new Jwt(

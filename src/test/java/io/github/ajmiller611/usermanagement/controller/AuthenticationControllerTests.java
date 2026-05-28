@@ -21,7 +21,7 @@ import io.github.ajmiller611.usermanagement.dto.AuthTokensDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.model.Role;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.AuthenticationService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -76,7 +76,7 @@ class AuthenticationControllerTests {
   @Autowired private ObjectMapper objectMapper;
   @MockBean private AuthenticationService authenticationService;
   @MockBean private UserService userService;
-  @MockBean private TokenService tokenService;
+  @MockBean private JwtService jwtService;
   @MockBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockBean private JwtDecoder jwtDecoder;
 
@@ -213,14 +213,14 @@ class AuthenticationControllerTests {
     when(validJwt.getSubject()).thenReturn("testUser");
 
     when(jwtDecoder.decode("validToken")).thenReturn(validJwt);
-    when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
+    when(jwtService.jwtDecoder()).thenReturn(jwtDecoder);
 
     when(userService.getUserByUsername("testUser"))
         .thenReturn(userDto);
 
-    when(tokenService.generateAccessToken(any(Authentication.class)))
+    when(jwtService.generateAccessToken(any(Authentication.class)))
         .thenReturn("newAccessToken");
-    when(tokenService.generateRefreshToken(any(Authentication.class)))
+    when(jwtService.generateRefreshToken(any(Authentication.class)))
         .thenReturn("newRefreshToken");
 
     mockMvc.perform(post("/auth/refresh-token")
@@ -258,7 +258,7 @@ class AuthenticationControllerTests {
     when(expiredJwt.getSubject()).thenReturn("testUser");
 
     when(jwtDecoder.decode("expiredToken")).thenReturn(expiredJwt);
-    when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
+    when(jwtService.jwtDecoder()).thenReturn(jwtDecoder);
 
     mockMvc.perform(post("/auth/refresh-token")
         .cookie(expiredRefreshTokenCookie))
@@ -274,7 +274,7 @@ class AuthenticationControllerTests {
   void givenInvalidRefreshTokenWhenRefreshTokenThenReturnBadRequest() throws Exception {
     Cookie invalidRefreshTokenCookie = new Cookie("refresh_token", "invalidToken");
     when(jwtDecoder.decode("invalidToken")).thenThrow(new JwtException("Invalid token"));
-    when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
+    when(jwtService.jwtDecoder()).thenReturn(jwtDecoder);
 
     mockMvc.perform(post("/auth/refresh-token")
             .cookie(invalidRefreshTokenCookie))
