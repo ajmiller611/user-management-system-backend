@@ -525,4 +525,74 @@ class GlobalExceptionHandlerTests {
               + "message User id must be greater than zero");
     }
   }
+
+  /**
+   * Tests the {@code handleInvitationNotFoundException} method in {@link GlobalExceptionHandler}.
+   * Verifies that a {@link InvitationNotFoundException} results in an HTTP 404 (Not Found)
+   * response with the correct structure and content.
+   */
+  @Test
+  void givenInvitationNotFoundExceptionWhenHandleInvitationNotFoundThenNotFound() {
+    InvitationNotFoundException exception = new InvitationNotFoundException("Invitation not found");
+
+    ResponseEntity<ResponseWrapper<String>> response =
+        globalExceptionHandler.handleInvitationNotFoundException(exception);
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(),
+        "Expected HTTP status to be 404 NOT FOUND when an invitation could not be found");
+
+    assertEquals("error", Objects.requireNonNull(response.getBody()).getStatus(),
+        "Expected response status to be 'error' for invitation not found exception");
+
+    assertThat(response.getBody().getMessage())
+        .withFailMessage("Expected response message to contain 'Invitation not found'")
+        .contains("Invitation not found");
+  }
+
+  /**
+   * Test the {@code handleInvitationAlreadyUsedException} method in {@link GlobalExceptionHandler}.
+   * Verifies that a {@link InvitationAlreadyUsedException} results in an HTTP 409 (Conflict)
+   * response with the correct structure and content.
+   */
+  @Test
+  void givenInvitationAlreadyUsedExceptionWhenHandleInvitationAlreadyUsedThenNotFound() {
+    InvitationAlreadyUsedException exception =
+        new InvitationAlreadyUsedException("Invitation is already used");
+
+    ResponseEntity<ResponseWrapper<String>> response =
+        globalExceptionHandler.handleInvitationAlreadyUsedException(exception);
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode(),
+        "Expected HTTP status to be 409 CONFLICT when an invitation could not be found");
+
+    assertEquals("error", Objects.requireNonNull(response.getBody()).getStatus(),
+        "Expected response status to be 'error' for invitation not found exception");
+
+    assertThat(response.getBody().getMessage())
+        .withFailMessage("Expected response message to contain 'Invitation is already used'")
+        .contains("Invitation is already used");
+  }
+
+  /**
+   * Tests the {@code handleInvitationExpiredException} method in {@link GlobalExceptionHandler}.
+   * Verifies that a {@link InvitationExpiredException} results in an HTTP 400 (Bad Request)
+   * response with the correct structure and content.
+   */
+  @Test
+  void givenInvitationExpiredExceptionWhenHandleInvitationExpiredThenNotFound() {
+    InvitationExpiredException exception = new InvitationExpiredException("Invitation is expired");
+
+    ResponseEntity<ResponseWrapper<String>> response =
+        globalExceptionHandler.handleInvitationExpiredException(exception);
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+        "Expected HTTP status to be 400 BAD REQUEST when an invitation could not be found");
+
+    assertEquals("error", Objects.requireNonNull(response.getBody()).getStatus(),
+        "Expected response status to be 'error' for invitation not found exception");
+
+    assertThat(response.getBody().getMessage())
+        .withFailMessage("Expected response message to contain 'Invitation is expired'")
+        .contains("Invitation is expired");
+  }
 }

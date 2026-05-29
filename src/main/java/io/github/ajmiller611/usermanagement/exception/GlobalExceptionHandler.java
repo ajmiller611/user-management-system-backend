@@ -290,4 +290,44 @@ public class GlobalExceptionHandler {
     response.setData(errors);
     return ResponseEntity.badRequest().body(response);
   }
+
+  /**
+   * Handles {@link InvitationNotFoundException} when an invitation does not exist in the database.
+   *
+   * @param ex the {@link InvitationNotFoundException} containing the error details
+   * @return a {@link ResponseEntity} containing the error response with the HTTP status of 404
+   */
+  @ExceptionHandler(InvitationNotFoundException.class)
+  public ResponseEntity<ResponseWrapper<String>> handleInvitationNotFoundException(
+      InvitationNotFoundException ex) {
+    logger.error("InvitationNotFoundException: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseWrapper.error(ex.getMessage()));
+  }
+
+  /**
+   * Handles {@link InvitationAlreadyUsedException} when an invitation has been used.
+   *
+   * @param ex the {@link InvitationAlreadyUsedException} containing the error details
+   * @return a {@link ResponseEntity} containing the error response with the HTTP status of 409
+   */
+  @ExceptionHandler(InvitationAlreadyUsedException.class)
+  public ResponseEntity<ResponseWrapper<String>> handleInvitationAlreadyUsedException(
+      InvitationAlreadyUsedException ex) {
+    logger.error("InvitationAlreadyUsedException: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseWrapper.error(ex.getMessage()));
+  }
+
+  /**
+   * Handles {@link InvitationExpiredException} when an invitation has expired.
+   *
+   * @param ex the {@link InvitationExpiredException} containing the error details
+   * @return a {@link ResponseEntity} containing the error response with the HTTP status of 400
+   */
+  @ExceptionHandler(InvitationExpiredException.class)
+  public ResponseEntity<ResponseWrapper<String>> handleInvitationExpiredException(
+      InvitationExpiredException ex) {
+    logger.error("InvitationExpiredException: {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ResponseWrapper.error(ex.getMessage()));
+  }
 }
