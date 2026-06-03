@@ -2,6 +2,7 @@ package io.github.ajmiller611.usermanagement.controller;
 
 import io.github.ajmiller611.usermanagement.dto.InvitationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.InvitationResponseDto;
+import io.github.ajmiller611.usermanagement.dto.InvitationValidationResponseDto;
 import io.github.ajmiller611.usermanagement.service.InvitationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +11,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -55,5 +58,29 @@ public class InvitationController {
         ResponseEntity.status(HttpStatus.CREATED).body(invitationResponseDto);
     logger.info("Invitation created successfully for email: {}", invitationResponseDto.getEmail());
     return response;
+  }
+
+  /**
+   * Validates an invitation.
+   *
+   * <p>This endpoint receives a token associated with an invitation to check its validation.
+   * It delegates the validation to the {@link InvitationService} and, if valid, returns a response
+   * with email and role of the invitation.</p>
+   *
+   * @param token a token associated with an invitation
+   * @return a {@link ResponseEntity} containing a {@link InvitationValidationResponseDto} with
+   *         the email and role
+   */
+  @GetMapping("/validate")
+  public ResponseEntity<InvitationValidationResponseDto> validateInvitation(
+      @RequestParam String token
+  ) {
+    logger.info("Endpoint /invitations/validate received GET request");
+
+    InvitationValidationResponseDto response =
+        invitationService.validateInvitation(token);
+
+    logger.info("Invitation validated successfully for email: {}", response.getEmail());
+    return ResponseEntity.ok(response);
   }
 }

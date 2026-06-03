@@ -3,8 +3,10 @@ package io.github.ajmiller611.usermanagement.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +16,10 @@ import io.github.ajmiller611.usermanagement.config.AppConfig;
 import io.github.ajmiller611.usermanagement.config.SecurityConfig;
 import io.github.ajmiller611.usermanagement.dto.InvitationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.InvitationResponseDto;
+import io.github.ajmiller611.usermanagement.dto.InvitationValidationResponseDto;
+import io.github.ajmiller611.usermanagement.exception.InvitationAlreadyUsedException;
+import io.github.ajmiller611.usermanagement.exception.InvitationExpiredException;
+import io.github.ajmiller611.usermanagement.exception.InvitationNotFoundException;
 import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.InvitationService;
 import java.time.LocalDateTime;
@@ -36,21 +42,34 @@ import org.springframework.test.web.servlet.MockMvc;
  * Unit tests for the {@link InvitationController}.
  *
  * <p>This test class focuses on verifying how the controller handles HTTP requests
- * for creating invitations.</p>
+ * for creating invitations and validating invitation tokens.</p>
  *
- * <h2>What these tests cover</h2>
+ * <h2>Key Features Tested</h2>
  * <ul>
  *   <li>
- *     <strong>Security rules:</strong> Ensures only ADMIN users can access the create invitation
- *     endpoint, and non-admin users receive a 403 Forbidden response.
+ *     <strong>Security rules:</strong> Ensures only ADMIN users can access the
+ *     create invitation endpoint, while validation requests remain accessible
+ *     to authenticated users.
  *   </li>
  *   <li>
- *     <strong>Successful request handling:</strong> Verifies that a valid request returns a
- *     201 Created response with the expected token, email, and expiration date from the service.
+ *     <strong>Successful invitation creation:</strong> Verifies that a valid
+ *     request returns a 201 Created response with the expected token, email,
+ *     and expiration date.
  *   </li>
  *   <li>
- *     <strong>Validation checks:</strong> Ensures invalid requests (missing email, missing role,
- *     or invalid email format) return a 400 Bad Request and that the service method is not called.
+ *     <strong>Request validation:</strong> Ensures invalid invitation creation
+ *     requests (missing email, missing role, or invalid email format) return
+ *     a 400 Bad Request.
+ *   </li>
+ *   <li>
+ *     <strong>Successful invitation validation:</strong> Verifies that a valid
+ *     invitation token returns a 200 OK response with the expected invitation
+ *     details.
+ *   </li>
+ *   <li>
+ *     <strong>Invitation validation errors:</strong> Ensures appropriate HTTP
+ *     responses are returned when a token is not associated with an invitation,
+ *     an invitation has expired, or an invitation has already been used.
  *   </li>
  * </ul>
  */
@@ -70,7 +89,7 @@ class InvitationControllerTests {
   /** Verifies a non-admin user request is responded with forbidden (403). */
   @Test
   @WithMockUser
-  void givenNonAdminUserWhenGetInvitationThenReturnForbidden() throws Exception {
+  void givenNonAdminUserWhenCreateInvitationThenReturnForbidden() throws Exception {
     mockMvc.perform(post("/invitations")
             .contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isForbidden());
@@ -121,7 +140,7 @@ class InvitationControllerTests {
   /** Verifies a missing email in the request responds with bad request (400). */
   @Test
   @WithMockUser(roles = "ADMIN")
-  void givenMissingEmailWhenGetInvitationThenReturnBadRequest() throws Exception {
+  void givenMissingEmailWhenCreateInvitationThenReturnBadRequest() throws Exception {
     InvitationRequestDto invitationRequestDto = new InvitationRequestDto(
         null,
         "USER"
@@ -139,7 +158,7 @@ class InvitationControllerTests {
   /** Verifies an invalid email in the request responds with bad request (400). */
   @Test
   @WithMockUser(roles = "ADMIN")
-  void givenInvalidEmailWhenGetInvitationThenReturnBadRequest() throws Exception {
+  void givenInvalidEmailWhenCreateInvitationThenReturnBadRequest() throws Exception {
     InvitationRequestDto invitationRequestDto = new InvitationRequestDto(
         "invalidEmail",
         "USER"
@@ -158,7 +177,7 @@ class InvitationControllerTests {
   /** Verifies a missing role in the request responds with a bad request (400). */
   @Test
   @WithMockUser(roles = "ADMIN")
-  void givenMissingRoleWhenGetInvitationThenReturnBdRequest() throws Exception {
+  void givenMissingRoleWhenCreateInvitationThenReturnBadRequest() throws Exception {
     InvitationRequestDto invitationRequestDto = new InvitationRequestDto(
         "test@email.com",
         null
@@ -174,5 +193,87 @@ class InvitationControllerTests {
     verify(invitationService, never()).createInvitation(any(InvitationRequestDto.class));
   }
 
+  /** Verifies a valid token request validates successfully and returns ok (200). */
+  @Test
+  @WithMockUser
+  void givenValidTokenWhenValidateInvitationThenReturnOk() throws Exception {
+    String validToken = "testToken";
 
+    LocalDateTime expiresAtTimestamp = LocalDateTime.of(2026, 5, 29, 0, 0, 0, 0);
+    InvitationValidationResponseDto invitationValidationResponseDto =
+        new InvitationValidationResponseDto(
+            "test@email.com",
+            "USER",
+            expiresAtTimestamp
+        );
+
+    when(invitationService.validateInvitation(validToken))
+        .thenReturn(invitationValidationResponseDto);
+
+    mockMvc.perform(get("/invitations/validate")
+            .param("token", validToken)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk());
+
+    verify(invitationService, times(1)).validateInvitation(validToken);
+
+  }
+
+  /** Verifies a nonexisting token responds with not found (404). */
+  @Test
+  @WithMockUser
+  void givenNonexistentTokenWhenValidateInvitationThenReturnNotFound() throws Exception {
+    String nonexistentToken = "testToken";
+
+    when(invitationService.validateInvitation(nonexistentToken))
+        .thenThrow(new InvitationNotFoundException("Invitation not found"));
+
+    mockMvc.perform(get("/invitations/validate")
+            .param("token", nonexistentToken)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value("error"))
+        .andExpect(jsonPath("$.message").value("Invitation not found"));
+
+    verify(invitationService, times(1)).validateInvitation(nonexistentToken);
+
+  }
+
+  /** Verifies an expired invitation responds with bad request (400). */
+  @Test
+  @WithMockUser
+  void givenExpiredInvitationWhenValidateInvitationThenReturnBadRequest() throws Exception {
+    String validToken = "testToken";
+
+    when(invitationService.validateInvitation(validToken))
+        .thenThrow(new InvitationExpiredException("Invitation has expired"));
+
+    mockMvc.perform(get("/invitations/validate")
+            .param("token", validToken)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value("error"))
+        .andExpect(jsonPath("$.message").value("Invitation has expired"));
+
+    verify(invitationService, times(1)).validateInvitation(validToken);
+  }
+
+  /** Verifies a used invitation responds with conflict (409). */
+  @Test
+  @WithMockUser
+  void givenUsedInvitationWhenValidateInvitationThenReturnConflict() throws Exception {
+    String validToken = "testToken";
+
+    when(invitationService.validateInvitation(validToken))
+        .thenThrow(new InvitationAlreadyUsedException("Invitation already used"));
+
+    mockMvc.perform(get("/invitations/validate")
+            .param("token", validToken)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.status").value("error"))
+        .andExpect(jsonPath("$.message").value("Invitation already used"));
+
+    verify(invitationService, times(1)).validateInvitation(validToken);
+  }
 }
