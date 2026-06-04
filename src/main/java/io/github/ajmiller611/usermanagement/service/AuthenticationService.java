@@ -1,9 +1,11 @@
 package io.github.ajmiller611.usermanagement.service;
 
 import io.github.ajmiller611.usermanagement.dto.AuthTokensDto;
+import io.github.ajmiller611.usermanagement.dto.RegistrationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.exception.UserNotFoundException;
+import io.github.ajmiller611.usermanagement.model.Invitation;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
 import io.github.ajmiller611.usermanagement.security.JwtService;
 import java.util.Map;
@@ -36,6 +38,7 @@ public class AuthenticationService {
   private final AuthenticationManager authenticationManager;
   private final UserRepository userRepository;
   private final UserService userService;
+  private final InvitationService invitationService;
   private final JwtService jwtService;
 
   /**
@@ -86,5 +89,32 @@ public class AuthenticationService {
       // Return an empty tokens and null user dto in case of authentication failure
       return new AuthTokensDto("", "", null);
     }
+  }
+
+  /**
+   * Completes registration for a user associated with a valid invitation.
+   *
+   * <p>This method validates the invitation token, creates a new user using the
+   * username and password supplied in the request, and marks the invitation as
+   * used so it cannot be reused.</p>
+   *
+   * @param requestDto the {@link RegistrationRequestDto} containing the invitation
+   *                   token, username, and password
+   * @return a {@link UserDto} containing the created user's details
+   */
+  @Transactional
+  public UserDto completeRegistration(RegistrationRequestDto requestDto) {
+    Invitation invitation = invitationService.getValidInvitation(requestDto.getToken());
+
+    UserRequestDto userRequestDto = new UserRequestDto(
+        requestDto.getUsername(),
+        requestDto.getPassword(),
+        invitation.getEmail()
+    );
+    UserDto userDto = userService.createAndSaveUser(userRequestDto);
+
+    invitationService.markInvitationAsUsed(invitation);
+
+    return userDto;
   }
 }

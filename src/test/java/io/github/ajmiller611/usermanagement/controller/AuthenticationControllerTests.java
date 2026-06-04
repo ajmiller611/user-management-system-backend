@@ -3,7 +3,9 @@ package io.github.ajmiller611.usermanagement.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,11 +20,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.ajmiller611.usermanagement.config.AppConfig;
 import io.github.ajmiller611.usermanagement.config.SecurityConfig;
 import io.github.ajmiller611.usermanagement.dto.AuthTokensDto;
+import io.github.ajmiller611.usermanagement.dto.RegistrationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.AuthenticationService;
+import io.github.ajmiller611.usermanagement.service.InvitationService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import jakarta.servlet.http.Cookie;
 import java.time.Clock;
@@ -32,6 +36,9 @@ import java.time.ZoneId;
 import java.util.Set;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -63,6 +70,15 @@ import org.springframework.test.web.servlet.MockMvc;
  * </ul>
  * </p>
  *
+ * <h2><h2>Feature Coverage: POST /auth/register/invitation</h2></h2>
+ * <ul>
+ *   <li>Completes user registration using a valid invitation token</li>
+ *   <li>Verifies successful creation returns HTTP 201 (Created)</li>
+ *   <li>Verifies response body contains created user details</li>
+ *   <li>Validates request DTO constraints (token, username, password)</li>
+ *   <li>Ensures authentication service is not called when validation fails</li>
+ * </ul>
+ *
  * <p>Uses {@link MockMvc} to simulate HTTP requests and responses, enabling
  * comprehensive validation of controller behavior without needing to start the full application.
  * </p>
@@ -75,6 +91,7 @@ class AuthenticationControllerTests {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockBean private AuthenticationService authenticationService;
+  @MockBean private InvitationService invitationService;
   @MockBean private UserService userService;
   @MockBean private JwtService jwtService;
   @MockBean private JwtAuthenticationConverter jwtAuthenticationConverter;
@@ -342,5 +359,100 @@ class AuthenticationControllerTests {
     mockMvc.perform(post("/auth/logout"))
         .andExpect(status().isOk())
         .andExpect(cookie().maxAge("refresh_token", 0));
+  }
+
+  /** Verifies a valid registration responds with created (201). */
+  @Test
+  void givenValidRequestWhenCompleteRegistrationThenReturnCreated() throws Exception {
+    RegistrationRequestDto requestDto = new RegistrationRequestDto(
+        "token",
+        "testUser",
+        "password"
+    );
+
+    String validJson = objectMapper.writeValueAsString(requestDto);
+
+    UserDto userDto = new UserDto(
+        1L,
+        "testUser",
+        "test@email.com",
+        LocalDateTime.now(),
+        Set.of(new Role("USER"))
+    );
+
+    when(authenticationService.completeRegistration(requestDto)).thenReturn(userDto);
+
+    mockMvc.perform(post("/auth/register/invitation")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(validJson))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.userId").value(userDto.getUserId()))
+        .andExpect(jsonPath("$.username").value(userDto.getUsername()))
+        .andExpect(jsonPath("$.email").value(userDto.getEmail()));
+
+    verify(authenticationService, times(1)).completeRegistration(requestDto);
+  }
+
+  /** Verifies a null, empty, and whitespace token responds with bad request (400). */
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "   "})
+  void givenInvalidTokenWhenCompleteRegistrationThenReturnBadRequest(String token)
+      throws Exception {
+    RegistrationRequestDto requestDto = new RegistrationRequestDto(
+        token,
+        "testUser",
+        "password"
+    );
+    String validJson = objectMapper.writeValueAsString(requestDto);
+
+    mockMvc.perform(post("/auth/register/invitation")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(validJson))
+        .andExpect(status().isBadRequest());
+
+    verify(authenticationService, never()).completeRegistration(requestDto);
+  }
+
+  /** Verifies a null, empty, and whitespace username responds with bad request (400). */
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "   "})
+  void givenInvalidUsernameWhenCompleteRegistrationThenReturnBadRequest(String username)
+      throws Exception {
+    RegistrationRequestDto requestDto = new RegistrationRequestDto(
+        "token",
+        username,
+        "password"
+    );
+    String validJson = objectMapper.writeValueAsString(requestDto);
+
+    mockMvc.perform(post("/auth/register/invitation")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(validJson))
+        .andExpect(status().isBadRequest());
+
+    verify(authenticationService, never()).completeRegistration(requestDto);
+  }
+
+  /** Verifies a null, empty, and whitespace password responds with bad request (400). */
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "   "})
+  void givenInvalidPasswordWhenCompleteRegistrationThenReturnBadRequest(String password)
+      throws Exception {
+    RegistrationRequestDto requestDto = new RegistrationRequestDto(
+        "token",
+        "testUser",
+        password
+    );
+    String validJson = objectMapper.writeValueAsString(requestDto);
+
+    mockMvc.perform(post("/auth/register/invitation")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(validJson))
+        .andExpect(status().isBadRequest());
+
+    verify(authenticationService, never()).completeRegistration(requestDto);
   }
 }

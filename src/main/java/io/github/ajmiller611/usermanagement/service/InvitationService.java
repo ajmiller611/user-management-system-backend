@@ -79,19 +79,10 @@ public class InvitationService {
    * an exception is thrown.</p>
    *
    * @param token the token associated with the {@link Invitation}
-   * @return a {@link InvitationValidationResponseDto} containing invitation details
+   * @return a {@link InvitationValidationResponseDto} containing validated invitation details
    */
   public InvitationValidationResponseDto validateInvitation(String token) {
-    Invitation invitation = invitationRepository.findByToken(token)
-        .orElseThrow(() -> new InvitationNotFoundException("Invitation not found"));
-
-    if (invitation.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
-      throw new InvitationExpiredException("Invitation is expired");
-    }
-
-    if (invitation.isUsed()) {
-      throw new InvitationAlreadyUsedException("Invitation is already used");
-    }
+    Invitation invitation = getValidInvitation(token);
 
     return new InvitationValidationResponseDto(
         invitation.getEmail(),
@@ -108,5 +99,27 @@ public class InvitationService {
   public void markInvitationAsUsed(Invitation invitation) {
     invitation.setUsed(true);
     invitationRepository.save(invitation);
+  }
+
+  /**
+   * Retrieves a valid invitation or throws an exception if the invitation does not exist,
+   * is used, or is expired.
+   *
+   * @param token the token associated with the {@link Invitation}
+   * @return a valid {@link Invitation}
+   */
+  public Invitation getValidInvitation(String token) {
+    Invitation invitation = invitationRepository.findByToken(token)
+        .orElseThrow(() -> new InvitationNotFoundException("Invitation not found"));
+
+    if (invitation.isUsed()) {
+      throw new InvitationAlreadyUsedException("Invitation is already used");
+    }
+
+    if (invitation.getExpiresAt().isBefore(LocalDateTime.now(clock))) {
+      throw new InvitationExpiredException("Invitation is expired");
+    }
+
+    return invitation;
   }
 }

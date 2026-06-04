@@ -188,11 +188,30 @@ class InvitationServiceTests {
     InvitationValidationResponseDto responseDto =
         invitationService.validateInvitation(expectedToken);
 
-    verify(invitationRepository, times(1)).findByToken(expectedToken);
     assertNotNull(responseDto, "Response should not be null");
     assertEquals(expectedEmail, responseDto.getEmail(), "Email should be set");
     assertEquals(expectedRole.getAuthority(), responseDto.getRole(), "Role should be set");
     assertEquals(expectedExpiredAt, responseDto.getExpiresAt(), "Expired at should be set");
+  }
+
+  /** Verifies a valid token returns the associated invitation. */
+  @Test
+  void givenValidTokenWhenGetValidInvitationThenReturnInvitation() {
+    when(clock.instant()).thenReturn(fixedClock.instant());
+    when(clock.getZone()).thenReturn(fixedClock.getZone());
+    when(invitationRepository.findByToken(expectedToken)).thenReturn(Optional.of(invitation));
+
+    Invitation result =
+        invitationService.getValidInvitation(expectedToken);
+
+    verify(invitationRepository, times(1)).findByToken(expectedToken);
+    assertNotNull(result, "Response should not be null");
+    assertEquals(expectedEmail, result.getEmail(), "Email should be set");
+    assertEquals(expectedToken, result.getToken(), "Token should be set");
+    assertEquals(expectedRole, result.getRole(), "Role should be set");
+    assertEquals(expectedCreatedAt, result.getCreatedAt(), "Created at should be set");
+    assertEquals(expectedExpiredAt, result.getExpiresAt(), "Expired at should be set");
+    assertFalse(result.isUsed(), "Marked should be false");
   }
 
   /**
@@ -200,12 +219,12 @@ class InvitationServiceTests {
    * that is not associated with an existing {@link Invitation}.
    */
   @Test
-  void givenInvalidInvitationWhenValidateInvitationThenThrowInvitationNotFoundException() {
+  void givenNonExistentInvitationWhenGetValidInvitationThenThrowInvitationNotFoundException() {
     when(invitationRepository.findByToken(expectedToken)).thenReturn(Optional.empty());
 
     assertThrows(InvitationNotFoundException.class,
-        () -> invitationService.validateInvitation(expectedToken),
-        "Expected validateInvitation to throw an exception when invitation is not found");
+        () -> invitationService.getValidInvitation(expectedToken),
+        "Expected getValidInvitation to throw an exception when invitation is not found");
   }
 
   /**
@@ -213,7 +232,7 @@ class InvitationServiceTests {
    * an expired {@link Invitation}.
    */
   @Test
-  void givenExpiredInvitationWhenValidateInvitationThenThrowInvitationExpiredException() {
+  void givenExpiredInvitationWhenGetValidInvitationThenThrowInvitationExpiredException() {
     invitation = new Invitation(
         1L,
         invitationRequestDto.getEmail(),
@@ -228,8 +247,8 @@ class InvitationServiceTests {
     when(invitationRepository.findByToken(expectedToken)).thenReturn(Optional.of(invitation));
 
     assertThrows(InvitationExpiredException.class,
-        () -> invitationService.validateInvitation(expectedToken),
-        "Expected validateInvitation to throw an exception when invitation is expired");
+        () -> invitationService.getValidInvitation(expectedToken),
+        "Expected getValidInvitation to throw an exception when invitation is expired");
   }
 
   /**
@@ -237,7 +256,7 @@ class InvitationServiceTests {
    * an {@link Invitation} that has been used already.
    */
   @Test
-  void givenAlreadyUsedInvitationWhenValidateInvitationThenThrowInvitationAlreadyUsedException() {
+  void givenAlreadyUsedInvitationWhenGetValidInvitationThenThrowInvitationAlreadyUsedException() {
     invitation = new Invitation(
         1L,
         invitationRequestDto.getEmail(),
@@ -247,13 +266,11 @@ class InvitationServiceTests {
         fixedTimestamp.plusDays(7),
         true
     );
-    when(clock.instant()).thenReturn(fixedClock.instant());
-    when(clock.getZone()).thenReturn(fixedClock.getZone());
     when(invitationRepository.findByToken(expectedToken)).thenReturn(Optional.of(invitation));
 
     assertThrows(InvitationAlreadyUsedException.class,
-        () -> invitationService.validateInvitation(expectedToken),
-        "Expected validateInvitation to throw an exception when invitation is already used");
+        () -> invitationService.getValidInvitation(expectedToken),
+        "Expected getValidInvitation to throw an exception when invitation is already used");
   }
 
   /** Verify an {@link Invitation} is updated and marked as used. */
