@@ -2,17 +2,25 @@ package io.github.ajmiller611.usermanagement.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.ajmiller611.usermanagement.dto.AuthTokensDto;
+import io.github.ajmiller611.usermanagement.dto.RegistrationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
+import io.github.ajmiller611.usermanagement.exception.InvitationNotFoundException;
+import io.github.ajmiller611.usermanagement.model.Invitation;
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.model.User;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -60,7 +68,8 @@ class AuthenticationServiceTests {
   @Mock private AuthenticationManager authenticationManager;
   @Mock private UserService userService;
   @Mock private UserRepository userRepository;
-  @Mock private TokenService tokenService;
+  @Mock private InvitationService invitationService;
+  @Mock private JwtService jwtService;
 
   LocalDateTime fixedTimestamp = LocalDateTime.of(2024, 11, 17, 0, 0, 0, 0);
   Clock fixedClock =
@@ -121,7 +130,7 @@ class AuthenticationServiceTests {
   @Test
   void givenValidCredentialsWhenLoginUserThenReturnAuthTokensDto() {
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(auth);
-    when(tokenService.generateTokens(auth)).thenReturn(tokens);
+    when(jwtService.generateTokens(auth)).thenReturn(tokens);
     when(userRepository.findByUsername("validUser"))
         .thenReturn(Optional.of(user));
     when(userService.mapToUserDto(user)).thenReturn(userDto);
@@ -198,5 +207,84 @@ class AuthenticationServiceTests {
 
     assertNull(result.getUserDto(),
         "The user DTO should be null when the user does not exist in the database.");
+  }
+
+  /**
+   * Verifies a valid request dto creates a user and returns a {@link UserDto} with the
+   * created user's details.
+   */
+  @Test
+  void givenValidRequestDtoWhenCompleteRegistrationThenReturnUserDto() {
+    Role role  = new Role("USER");
+    LocalDateTime createdAtTimestamp = LocalDateTime.of(2026, 5, 1, 0, 0, 0, 0);
+    LocalDateTime expiresAtTimestamp = LocalDateTime.of(2026, 5, 8, 0, 0, 0, 0);
+    Invitation invitation = new Invitation(
+        1L,
+        "test@email.com",
+        "token",
+        role,
+        createdAtTimestamp,
+        expiresAtTimestamp,
+        false
+    );
+
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto(
+        invitation.getToken(),
+        "testUser",
+        "password"
+    );
+
+    UserRequestDto userRequestDto = new UserRequestDto(
+        registrationRequestDto.getUsername(),
+        registrationRequestDto.getPassword(),
+        invitation.getEmail()
+    );
+
+    userDto = new UserDto(
+        2L,
+        userRequestDto.getEmail(),
+        userRequestDto.getEmail(),
+        fixedTimestamp,
+        Set.of(role)
+    );
+
+    when(invitationService.getValidInvitation(any(String.class))).thenReturn(invitation);
+    when(userService.createAndSaveUser(any(UserRequestDto.class))).thenReturn(this.userDto);
+
+    UserDto result = authenticationService.completeRegistration(registrationRequestDto);
+
+    assertNotNull(result, "UserDto should not be null");
+    assertEquals(userDto.getUserId(), result.getUserId(),
+        "UserDto's id should be the same");
+    assertEquals(userDto.getUsername(), result.getUsername(),
+        "UserDto's username should be the same");
+    assertEquals(userDto.getEmail(), result.getEmail(),
+        "UserDto's email should be the same");
+    assertEquals(userDto.getCreatedAt(), result.getCreatedAt(),
+        "UserDto's createdAt should be the same");
+    assertEquals(userDto.getAuthorities(), result.getAuthorities(),
+        "UserDto's authorities should be the same");
+
+    verify(invitationService, times(1)).getValidInvitation(invitation.getToken());
+    verify(userService, times(1)).createAndSaveUser(any(UserRequestDto.class));
+    verify(invitationService, times(1)).markInvitationAsUsed(invitation);
+  }
+
+  /** Verifies invitation validation exceptions are propagated and registration is aborted. */
+  @Test
+  void givenNonExistingInvitationWhenCompleteRegistrationThenReturnException() {
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto(
+        "nonExistingToken",
+        "testUser",
+        "password"
+    );
+    when(invitationService.getValidInvitation(any(String.class)))
+        .thenThrow(new InvitationNotFoundException("Invitation not found"));
+
+    assertThrows(InvitationNotFoundException.class,
+        () -> authenticationService.completeRegistration(registrationRequestDto));
+
+    verify(userService, never()).createAndSaveUser(any(UserRequestDto.class));
+    verify(invitationService, never()).markInvitationAsUsed(any(Invitation.class));
   }
 }

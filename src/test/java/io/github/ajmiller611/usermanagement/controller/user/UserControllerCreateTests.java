@@ -18,7 +18,7 @@ import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -82,7 +82,7 @@ class UserControllerCreateTests {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockBean private UserService userService;
-  @MockBean private TokenService tokenService;
+  @MockBean private JwtService jwtService;
   @MockBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockBean private JwtDecoder jwtDecoder;
   @MockBean private UserRepository userRepository;

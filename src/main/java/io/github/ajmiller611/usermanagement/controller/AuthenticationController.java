@@ -2,15 +2,20 @@ package io.github.ajmiller611.usermanagement.controller;
 
 import io.github.ajmiller611.usermanagement.dto.AuthTokensDto;
 import io.github.ajmiller611.usermanagement.dto.LoginResponseDto;
+import io.github.ajmiller611.usermanagement.dto.RegistrationRequestDto;
 import io.github.ajmiller611.usermanagement.dto.UserDto;
 import io.github.ajmiller611.usermanagement.dto.UserRequestDto;
+import io.github.ajmiller611.usermanagement.dto.UserResponseDto;
 import io.github.ajmiller611.usermanagement.model.Role;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.AuthenticationService;
+import io.github.ajmiller611.usermanagement.service.InvitationService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -25,11 +30,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * REST controller responsible for user authentication and refresh tokens endpoints.
@@ -48,7 +55,8 @@ public class AuthenticationController {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   private final AuthenticationService authenticationService;
-  private final TokenService tokenService;
+  private final InvitationService invitationService;
+  private final JwtService jwtService;
   private final UserService userService;
 
   public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
@@ -151,7 +159,7 @@ public class AuthenticationController {
       }
 
       // Decode the refresh token to extract claims
-      Jwt decodedJwt = tokenService.jwtDecoder().decode(refreshToken);
+      Jwt decodedJwt = jwtService.jwtDecoder().decode(refreshToken);
 
       // Extract the username or subject from the refresh token
       String username = decodedJwt.getSubject();
@@ -171,8 +179,8 @@ public class AuthenticationController {
           null,
           userDto.getAuthorities()
       );
-      String newAccessToken = tokenService.generateAccessToken(auth);
-      String newRefreshToken = tokenService.generateRefreshToken(auth);
+      String newAccessToken = jwtService.generateAccessToken(auth);
+      String newRefreshToken = jwtService.generateRefreshToken(auth);
 
       response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccessToken);
 
@@ -260,5 +268,41 @@ public class AuthenticationController {
     response.addCookie(refreshTokenCookie);
 
     return ResponseEntity.ok("Logged out successfully");
+  }
+
+  /**
+   * Completes user registration using an invitation token.
+   *
+   * <p>This endpoint validates the invitation token, creates a new user with the
+   * provided username and password, and returns the created user details.</p>
+   *
+   * @param requestDto the {@link RegistrationRequestDto} containing token, username, and password
+   * @return a {@link UserResponseDto} containing the created user's details
+   */
+  @Transactional
+  @PostMapping("/register/invitation")
+  public ResponseEntity<UserResponseDto> completeRegistration(
+      @Valid @RequestBody RegistrationRequestDto requestDto) {
+    logger.info("Endpoint /register/invitation received POST request: {}", requestDto);
+
+    UserDto userDto = authenticationService.completeRegistration(requestDto);
+
+    URI location = ServletUriComponentsBuilder
+        .fromCurrentContextPath()
+        .path("/users/{id}")
+        .buildAndExpand(userDto.getUserId())
+        .toUri();
+
+    UserResponseDto responseDto = new UserResponseDto(
+        userDto.getUserId(),
+        userDto.getUsername(),
+        userDto.getEmail()
+    );
+
+    ResponseEntity<UserResponseDto> response =
+        ResponseEntity.created(location).body(responseDto);
+
+    logger.info("Endpoint /register/invitation response: {}", response);
+    return response;
   }
 }

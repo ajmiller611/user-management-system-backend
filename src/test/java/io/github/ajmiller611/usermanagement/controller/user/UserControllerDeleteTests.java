@@ -16,7 +16,7 @@ import io.github.ajmiller611.usermanagement.controller.UserController;
 import io.github.ajmiller611.usermanagement.exception.UserNotFoundException;
 import io.github.ajmiller611.usermanagement.repository.RoleRepository;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
-import io.github.ajmiller611.usermanagement.security.TokenService;
+import io.github.ajmiller611.usermanagement.security.JwtService;
 import io.github.ajmiller611.usermanagement.service.UserService;
 import nl.altindag.log.LogCaptor;
 import org.junit.jupiter.api.Test;
@@ -68,7 +68,7 @@ class UserControllerDeleteTests {
 
   @Autowired private MockMvc mockMvc;
   @MockBean private UserService userService;
-  @MockBean private TokenService tokenService;
+  @MockBean private JwtService jwtService;
   @MockBean private JwtAuthenticationConverter jwtAuthenticationConverter;
   @MockBean private JwtDecoder jwtDecoder;
   @MockBean private RoleRepository roleRepository;

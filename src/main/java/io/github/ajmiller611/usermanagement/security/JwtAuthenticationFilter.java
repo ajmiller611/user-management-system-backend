@@ -31,7 +31,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private final TokenService tokenService;
+  private final JwtService jwtService;
   private final JwtAuthenticationConverter jwtAuthenticationConverter;
 
   /**
@@ -70,8 +70,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     String token = authorizationHeader.substring(7);
 
     try {
-      // Decode the JWT token using the TokenService.
-      Jwt jwt = tokenService.jwtDecoder().decode(token);
+      // Decode the JWT token using the JwtService.
+      Jwt jwt = jwtService.jwtDecoder().decode(token);
 
       // Convert the decoded JWT into an Authentication token using the JwtAuthenticationConverter.
       JwtAuthenticationToken authentication =

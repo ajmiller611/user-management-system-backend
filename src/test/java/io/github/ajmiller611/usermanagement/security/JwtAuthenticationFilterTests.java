@@ -45,7 +45,7 @@ import org.springframework.test.context.ActiveProfiles;
 class JwtAuthenticationFilterTests {
 
   @InjectMocks private JwtAuthenticationFilter jwtAuthenticationFilter;
-  @Mock private TokenService tokenService;
+  @Mock private JwtService jwtService;
   @Mock private JwtAuthenticationConverter jwtAuthenticationConverter;
   @Mock private JwtDecoder jwtDecoder;
   @Mock private FilterChain filterChain;
@@ -62,14 +62,14 @@ class JwtAuthenticationFilterTests {
   @BeforeAll
   static void setUpOnce() {
     RsaKeyProperties keys = new RsaKeyProperties();
-    TokenService tokenServiceSetUp = new TokenService(keys);
+    JwtService jwtServiceSetUp = new JwtService(keys);
 
     // Generate a valid token
     String username = "testUser";
     Collection<? extends GrantedAuthority> authorities =
         List.of(new SimpleGrantedAuthority("USER"));
     Authentication auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
-    validToken = tokenServiceSetUp.generateAccessToken(auth);
+    validToken = jwtServiceSetUp.generateAccessToken(auth);
   }
 
   /**
@@ -80,7 +80,7 @@ class JwtAuthenticationFilterTests {
   void setUp() {
     SecurityContextHolder.clearContext(); // Reset security context
 
-    jwtAuthenticationFilter = new JwtAuthenticationFilter(tokenService, jwtAuthenticationConverter);
+    jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, jwtAuthenticationConverter);
   }
 
   /**
@@ -120,10 +120,10 @@ class JwtAuthenticationFilterTests {
   void givenValidAuthorizationHeaderWhenFilterIsExecutedThenAuthenticationIsSet()
       throws ServletException, IOException {
     when(request.getHeader("Authorization")).thenReturn("Bearer " + validToken);
-    when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
+    when(jwtService.jwtDecoder()).thenReturn(jwtDecoder);
     Jwt jwt = mock(Jwt.class);
     JwtAuthenticationToken authenticationToken = mock(JwtAuthenticationToken.class);
-    when(tokenService.jwtDecoder().decode(validToken)).thenReturn(jwt);
+    when(jwtService.jwtDecoder().decode(validToken)).thenReturn(jwt);
     when(jwtAuthenticationConverter.convert(jwt)).thenReturn(authenticationToken);
 
     jwtAuthenticationFilter.doFilter(request, response, filterChain);
@@ -143,8 +143,8 @@ class JwtAuthenticationFilterTests {
   void givenInvalidJwtTokenWhenFilterIsExecutedThenRespondUnauthorized()
       throws ServletException, IOException {
     when(request.getHeader("Authorization")).thenReturn("Bearer " + invalidToken);
-    when(tokenService.jwtDecoder()).thenReturn(jwtDecoder);
-    when(tokenService.jwtDecoder().decode(invalidToken))
+    when(jwtService.jwtDecoder()).thenReturn(jwtDecoder);
+    when(jwtService.jwtDecoder().decode(invalidToken))
         .thenThrow(new JwtException("Invalid Token"));
 
     jwtAuthenticationFilter.doFilter(request, response, filterChain);
@@ -171,6 +171,6 @@ class JwtAuthenticationFilterTests {
     jwtAuthenticationFilter.doFilter(request, response, filterChain);
 
     verify(filterChain).doFilter(request, response);
-    verifyNoInteractions(tokenService, jwtAuthenticationConverter);
+    verifyNoInteractions(jwtService, jwtAuthenticationConverter);
   }
 }

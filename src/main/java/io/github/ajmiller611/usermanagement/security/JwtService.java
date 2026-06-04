@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
-public class TokenService {
+public class JwtService {
 
   private final RsaKeyProperties keys;
 

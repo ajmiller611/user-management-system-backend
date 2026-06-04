@@ -126,6 +126,7 @@ public class SecurityConfig {
           auth.requestMatchers("/auth/**").permitAll();
           auth.requestMatchers(HttpMethod.GET, "/users/**").hasAnyRole(ADMIN, "USER");
           auth.requestMatchers("/users/**").hasRole(ADMIN);
+          auth.requestMatchers(HttpMethod.POST, "/invitations").hasRole(ADMIN);
           auth.anyRequest().authenticated();
         });
     http
