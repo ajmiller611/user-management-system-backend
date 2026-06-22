@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.model.User;
+import io.github.ajmiller611.usermanagement.repository.InvitationRepository;
 import io.github.ajmiller611.usermanagement.repository.RoleRepository;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
 import java.time.Clock;
@@ -38,6 +39,7 @@ class DemoResetServiceTests {
 
   @Mock private UserRepository userRepository;
   @Mock private RoleRepository roleRepository;
+  @Mock private InvitationRepository invitationRepository;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private Clock clock;
   @Mock private BootstrapService bootstrapService;
@@ -72,6 +74,7 @@ class DemoResetServiceTests {
 
     verify(userRepository).deleteAllUserRoleMappings();
     verify(userRepository).deleteAll();
+    verify(invitationRepository).deleteAll();
 
     verify(bootstrapService).ensureRolesExist();
     verify(bootstrapService).ensureAdminExists();
