@@ -2,6 +2,7 @@ package io.github.ajmiller611.usermanagement.service;
 
 import io.github.ajmiller611.usermanagement.model.Role;
 import io.github.ajmiller611.usermanagement.model.User;
+import io.github.ajmiller611.usermanagement.repository.InvitationRepository;
 import io.github.ajmiller611.usermanagement.repository.RoleRepository;
 import io.github.ajmiller611.usermanagement.repository.UserRepository;
 import java.time.Clock;
@@ -24,6 +25,7 @@ public class DemoResetService {
 
   private final UserRepository userRepository;
   private final RoleRepository roleRepository;
+  private final InvitationRepository invitationRepository;
   private final PasswordEncoder passwordEncoder;
   private final Clock clock;
   private final BootstrapService bootstrapService;
@@ -31,7 +33,7 @@ public class DemoResetService {
   /**
    * Resets the application to a demo state.
    *
-   * <p>This method clears existing user data and user-role mappings,
+   * <p>This method clears existing user and invitation data as well as user-role mappings,
    * then re-creates the required roles, the default admin user,
    * and a small set of demo users for testing and development.</p>
    *
@@ -44,6 +46,7 @@ public class DemoResetService {
     // Remove dependent data first
     userRepository.deleteAllUserRoleMappings();
     userRepository.deleteAll();
+    invitationRepository.deleteAll();
 
     bootstrapService.ensureRolesExist();
     bootstrapService.ensureAdminExists();
